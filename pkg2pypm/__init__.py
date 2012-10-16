@@ -20,6 +20,26 @@ def getDirMeta( dirpackage ) :
     if os.path.isdir( sDir ) and sDir.endswith( '.egg-info' ) :
       return sDir
 
+def convertMetadata( subject ) :
+  ##* Architecure need to be passed to script.
+  ##* Python version need to be passed to script.
+  mDst = { 'pkg_version' : 1, 'osarch' : 'win32-x86', 'pyver' : '2.7' }
+  def convertRecord( name, sourcename = None ) :
+    mDst[ name ] = subject.get( sourcename or name )
+  convertRecord( 'maintainer' )
+  convertRecord( 'description' )
+  convertRecord( 'license' )
+  convertRecord( 'author' )
+  convertRecord( 'home_page', 'home-page' )
+  convertRecord( 'summary' )
+  convertRecord( 'author_email', 'author-email' )
+  convertRecord( 'version' )
+  convertRecord( 'keywords' )
+  convertRecord( 'install_requires' )
+  convertRecord( 'maintainer_email' )
+  convertRecord( 'name' )
+  return mDst
+
 def main() :
   try :
     ##  Used to extract ".tar.gz" into or copy package directory to run
@@ -61,8 +81,10 @@ def main() :
     ##  Read package metadata.
     with open( os.path.join( sDirMeta, 'PKG-INFO' ), 'rb' ) as oFile :
       ##! Names will be lowercase.
-      mMeta = dict( rfc822.Message( oFile ).items() )
-    print( "Name: \"{0}\"".format( mMeta[ 'name' ] ) )
+      mMetaPypi = dict( rfc822.Message( oFile ).items() )
+    ##  Create metadata for PYPM.
+    mMetaPypm = convertMetadata( mMetaPypi )
+    print( mMetaPypm )
   finally :
     shutil.rmtree( sDirTmp, ignore_errors = True )
 
