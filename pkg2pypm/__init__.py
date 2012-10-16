@@ -11,6 +11,7 @@ import tarfile
 import distutils.dir_util
 import subprocess
 import rfc822
+import json
 
 ABOUT_APP = "PYPI to PYPM converter"
 
@@ -86,8 +87,8 @@ def main() :
       ##! Names will be lowercase.
       mMetaPkg = dict( rfc822.Message( oFile ).items() )
     ##  Create metadata for PYPM.
-    mMetaPypm = convertMetadata( mMetaPkg )
-    print( mMetaPypm )
+    with open( os.path.join( sDirTmpPypm, 'info.json' ), 'wb' ) as oFile :
+      json.dump( convertMetadata( mMetaPkg ), oFile )
   finally :
     shutil.rmtree( sDirTmpPkg, ignore_errors = True )
     shutil.rmtree( sDirTmpPypm, ignore_errors = True )
