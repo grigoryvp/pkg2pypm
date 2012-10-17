@@ -128,6 +128,8 @@ def main() :
       os.chdir( sDirTmpPypm )
       oDst.write( 'data.tar.gz' )
       oDst.write( 'info.json' )
+  except Exception as oEx :
+    print( "Error: {0}".format( oEx.message ) )
   finally :
     shutil.rmtree( sDirTmpPkg, ignore_errors = True )
     shutil.rmtree( sDirTmpPypm, ignore_errors = True )
