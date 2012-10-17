@@ -56,6 +56,9 @@ def main() :
     oParser.add_argument( 'source', help = "PYPI .tar.gz file or directory" )
     oParser.add_argument( 'target', help = "PYPM .pypm file to create" )
     oArgs = oParser.parse_args()
+    ##! Script will change current dir, so use absolute paths.
+    oArgs.source = os.path.abspath( oArgs.source )
+    oArgs.target = os.path.abspath( oArgs.target )
     if os.path.isfile( oArgs.source ) :
       assert oArgs.source.endswith( 'tar.gz' ), "Source file must be .tar.gz"
       sFileTmp = '{0}/pkg.tar'.format( sDirTmpPkg )
@@ -107,16 +110,23 @@ def main() :
       assert len( lContent ) == 1, "bdist .zip must contain one root item"
       sDirData = os.path.join( sDirTmpRepack, lContent[ 0 ] )
       assert os.path.isdir( sDirData ), "bdist .zip must contain directory"
+      ##* Temp dir reuse is not good.
       sFileTar = os.path.join( sDirTmpPkg, 'data.tar' )
-      ##! Requires for 'tar.add' to omit path.
-      os.chdir( sDirData )
       with tarfile.TarFile( sFileTar, 'w' ) as oFileTar :
+        ##! Requires for 'tar.add' to omit path.
+        os.chdir( sDirData )
         for sDir in os.listdir( sDirData ) :
           oFileTar.add( sDir )
       sFileGzip = os.path.join( sDirTmpPypm, 'data.tar.gz' )
       with gzip.GzipFile( sFileGzip, 'w' ) as oFileGzip :
         with open( sFileTar, 'rb' ) as oFileTar :
           oFileGzip.write( oFileTar.read() )
+    ##  Create PYPM package, it's a .zip archive:
+    with zipfile.ZipFile( oArgs.target, 'w' ) as oDst :
+      ##! Requires for 'zip.add' to omit path.
+      os.chdir( sDirTmpPypm )
+      oDst.write( 'data.tar.gz' )
+      oDst.write( 'info.json' )
   finally :
     shutil.rmtree( sDirTmpPkg, ignore_errors = True )
     shutil.rmtree( sDirTmpPypm, ignore_errors = True )
