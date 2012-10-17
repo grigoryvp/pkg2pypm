@@ -61,15 +61,8 @@ def main() :
     oArgs.target = os.path.abspath( oArgs.target )
     if os.path.isfile( oArgs.source ) :
       assert oArgs.source.endswith( 'tar.gz' ), "Source file must be .tar.gz"
-      sFileTmp = '{0}/pkg.tar'.format( sDirTmpPkg )
-      ##  Extract '.tar' from 'tar.gz'
-      with open( sFileTmp, 'wb' ) as oDst :
-        with gzip.GzipFile( oArgs.source ) as oSrc :
-          oDst.write( oSrc.read() )
-      ##  Extract content of '.tar'
-      with tarfile.TarFile( sFileTmp ) as oSrc :
-        oSrc.extractall( sDirTmpPkg )
-      os.remove( sFileTmp )
+      with tarfile.TarFile.gzopen( oArgs.source, 'rb' ) as oArchive :
+        oArchive.extractall( sDirTmpPkg )
       ##  Single folder inside temp dir is the package from '.tar.gz'
       lContent = os.listdir( sDirTmpPkg )
       assert len( lContent ) == 1, ".tar must contain one root item"
