@@ -59,6 +59,7 @@ def main() :
     ##! Script will change current dir, so use absolute paths.
     oArgs.source = os.path.abspath( oArgs.source )
     oArgs.target = os.path.abspath( oArgs.target )
+    assert not os.path.isdir( oArgs.target ), "Target must be file, not dir"
     if os.path.isfile( oArgs.source ) :
       assert oArgs.source.endswith( 'tar.gz' ), "Source file must be .tar.gz"
       sFileTmp = '{0}/pkg.tar'.format( sDirTmpPkg )
