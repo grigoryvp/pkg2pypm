@@ -12,6 +12,7 @@ import distutils.dir_util
 import subprocess
 import rfc822
 import json
+import zipfile
 
 ABOUT_APP = "PYPI to PYPM converter"
 
@@ -49,6 +50,8 @@ def main() :
     ##  Used to create PYPM package directory structure before packing
     ##  it into .pypm file that is actually a .zip archive.
     sDirTmpPypm = tempfile.mkdtemp()
+    ##  Used to repack archive created by 'setup.py'
+    sDirTmpRepack = tempfile.mkdtemp()
     oParser = argparse.ArgumentParser( description = ABOUT_APP )
     oParser.add_argument( 'source', help = "PYPI .tar.gz file or directory" )
     oParser.add_argument( 'target', help = "PYPM .pypm file to create" )
@@ -58,10 +61,10 @@ def main() :
       sFileTmp = '{0}/pkg.tar'.format( sDirTmpPkg )
       ##  Extract '.tar' from 'tar.gz'
       with open( sFileTmp, 'wb' ) as oDst :
-        with gzip.open( oArgs.source ) as oSrc :
+        with gzip.GzipFile( oArgs.source ) as oSrc :
           oDst.write( oSrc.read() )
       ##  Extract content of '.tar'
-      with tarfile.open( sFileTmp ) as oSrc :
+      with tarfile.TarFile( sFileTmp ) as oSrc :
         oSrc.extractall( sDirTmpPkg )
       os.remove( sFileTmp )
       ##  Single folder inside temp dir is the package from '.tar.gz'
@@ -72,16 +75,18 @@ def main() :
     else :
       distutils.dir_util.copy_tree( oArgs.source, sDirTmpPkg )
       sDirPkg = sDirTmpPkg
-    ##  If package don't have '.egg-info' subdir with metadata than create it.
-    if not getDirMeta( sDirPkg ) :
-      subprocess.check_return( [
-        'python',
-        os.path.join( sDirPkg, 'setup.py' ),
-        'sdist' ],
-        ##! For 'python' to resolve.
-        shell = True )
+    ##  Create binary distribution in temp folder package was copied into.
+    ##  This will create '.egg-info', 'build' and 'dist' dirs.
+    ##! Requires for 'setup.py' to work.
+    os.chdir( sDirPkg )
+    subprocess.check_output( [
+      'python',
+      os.path.join( sDirPkg, 'setup.py' ),
+      'bdist' ],
+      ##! For 'python' to resolve.
+      shell = True, stderr = subprocess.STDOUT )
     sDirMeta = getDirMeta( sDirPkg )
-    assert sDirMeta, "No .egg-info metadir and can't create one"
+    assert sDirMeta, "No .egg-info metadir found"
     ##  Read package metadata.
     with open( os.path.join( sDirMeta, 'PKG-INFO' ), 'rb' ) as oFile :
       ##! Names will be lowercase.
@@ -89,7 +94,31 @@ def main() :
     ##  Create metadata for PYPM.
     with open( os.path.join( sDirTmpPypm, 'info.json' ), 'wb' ) as oFile :
       json.dump( convertMetadata( mMetaPkg ), oFile )
+    ##  'bdist' command created 'bdist' dir with '.zip' archive that
+    ##  contains dir like 'Python27' that contains 'Lib' and 'Scripts'
+    ##  subdirs. PYPM pckage must contain 'data.tar.gz' archive that
+    ##  contains 'Lib' and 'Scripts' as top level dirs. So, repack.
+    lContent = os.listdir( os.path.join( sDirPkg, 'dist' ) )
+    assert len( lContent ) == 1, "'bdist' dir must contain one item"
+    sArchiveSrc = os.path.join( sDirPkg, 'dist', lContent[ 0 ] )
+    with zipfile.ZipFile( sArchiveSrc ) as oArchiveSrc :
+      oArchiveSrc.extractall( sDirTmpRepack )
+      lContent = os.listdir( sDirTmpRepack )
+      assert len( lContent ) == 1, "bdist .zip must contain one root item"
+      sDirData = os.path.join( sDirTmpRepack, lContent[ 0 ] )
+      assert os.path.isdir( sDirData ), "bdist .zip must contain directory"
+      sFileTar = os.path.join( sDirTmpPkg, 'data.tar' )
+      ##! Requires for 'tar.add' to omit path.
+      os.chdir( sDirData )
+      with tarfile.TarFile( sFileTar, 'w' ) as oFileTar :
+        for sDir in os.listdir( sDirData ) :
+          oFileTar.add( sDir )
+      sFileGzip = os.path.join( sDirTmpPypm, 'data.tar.gz' )
+      with gzip.GzipFile( sFileGzip, 'w' ) as oFileGzip :
+        with open( sFileTar, 'rb' ) as oFileTar :
+          oFileGzip.write( oFileTar.read() )
   finally :
     shutil.rmtree( sDirTmpPkg, ignore_errors = True )
     shutil.rmtree( sDirTmpPypm, ignore_errors = True )
+    shutil.rmtree( sDirTmpRepack, ignore_errors = True )
 
