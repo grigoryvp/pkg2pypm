@@ -118,15 +118,11 @@ def main() :
         with open( sFileTar, 'rb' ) as oFileTar :
           oFileGzip.write( oFileTar.read() )
     ##  Create PYPM package, it's a .tar.gz archive:
-    sFileTar = os.path.join( sDirTmpPkg, 'data_out.tar' )
-    with tarfile.TarFile( sFileTar, 'w' ) as oFileTar :
+    with tarfile.TarFile.gzopen( oArgs.target, 'w' ) as oTarget :
       ##! Requires for 'tar.add' to omit path.
       os.chdir( sDirTmpPypm )
-      oFileTar.add( 'data.tar.gz' )
-      oFileTar.add( 'info.json' )
-    with gzip.GzipFile( oArgs.target, 'w' ) as oFileGzip :
-      with open( sFileTar, 'rb' ) as oFileTar :
-        oFileGzip.write( oFileTar.read() )
+      oTarget.add( 'data.tar.gz' )
+      oTarget.add( 'info.json' )
   finally :
     shutil.rmtree( sDirTmpPkg, ignore_errors = True )
     shutil.rmtree( sDirTmpPypm, ignore_errors = True )
