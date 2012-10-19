@@ -56,11 +56,6 @@ def main() :
     ##  Used to extract ".tar.gz" into or copy package directory to run
     ##  it's 'setup.py' and create metadata.
     sDirTmpPkg = tempfile.mkdtemp()
-    ##  Used to create PYPM package directory structure before packing
-    ##  it into .pypm file that is actually a .tar.gz archive.
-    sDirTmpPypm = tempfile.mkdtemp()
-    ##  Used to repack archive created by 'setup.py'
-    sDirTmpRepack = tempfile.mkdtemp()
     oParser = argparse.ArgumentParser( description = ABOUT_APP )
     oParser.add_argument( 'source', help = "PYPI .tar.gz file or directory" )
     oParser.add_argument( 'target', help = "PYPM .pypm file to create" )
@@ -102,20 +97,14 @@ def main() :
         ##  contains dir like 'Python27' that contains 'Lib' and 'Scripts'
         ##  subdirs. PYPM pckage must contain 'data.tar.gz' archive that
         ##  contains 'Lib' and 'Scripts' as top level dirs. So, repack.
-        mArgs = { 'fileobj' : StringIO.StringIO(), 'mode' : 'w' }
-        with tarfile.TarFile.gzopen( '', ** mArgs ) as oData :
+        oDataBits = StringIO.StringIO()
+        mArgs = { 'fileobj' : oDataBits, 'mode' : 'w' }
+        with tarfile.TarFile.gzopen( name = None, ** mArgs ) as oData :
           for oFile in oSource.filelist :
-            oFileData = StringIO.StringIO( oSource.read( oFile.filename ) )
             ##! Skip first dir in source archive, it's like 'Python27'.
             sName = re.sub( r'^[^/\\]+(/|\\)', '', oFile.filename )
-            oFileInfo = tarfile.TarInfo( name = sName )
-            oFileInfo.size = oFileData.len
-            oData.addfile( oFileInfo, oFileData )
-          oData.fileobj.flush()
-          oFileInfo = tarfile.TarInfo( name = 'data.tar.gz' )
-          ##! first |.fileobj| reference |GzipFile|.
-          oFileInfo.size = oData.fileobj.fileobj.len
-          oTarget.addfile( oFileInfo, tap( oData.fileobj.fileobj.seek, 0 ) )
+            tarWriteStr( oData, sName, oSource.read( oFile.filename ) )
+        tarWriteStr( oTarget, 'data.tar.gz', oDataBits.getvalue() )
       # oTarget.add( 'data.tar.gz' )
       ##  Read source package metadata.
       sDirMeta = getDirMeta( sDirPkg )
@@ -125,8 +114,8 @@ def main() :
         ##! Names will be lowercase.
         sMetadata = convertMetadata( dict( rfc822.Message( oFile ).items() ) )
         tarWriteStr( oTarget, 'info.json', json.dumps( sMetadata ) )
+  except Exception as oEx :
+    print( "error: \"{0}\"".format( oEx.message ) )
   finally :
     shutil.rmtree( sDirTmpPkg, ignore_errors = True )
-    shutil.rmtree( sDirTmpPypm, ignore_errors = True )
-    shutil.rmtree( sDirTmpRepack, ignore_errors = True )
 
