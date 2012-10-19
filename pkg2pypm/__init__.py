@@ -31,6 +31,12 @@ def getDirMeta( dirpackage ) :
     if os.path.isdir( sDir ) and sDir.endswith( '.egg-info' ) :
       return sDir
 
+def getOneFile( * vargs ) :
+  sPath = os.path.join( * vargs )
+  lContent = os.listdir( sPath )
+  assert len( lContent ) == 1, "\"{0}\" must have one item".format( sPath )
+  return os.path.join( sPath, lContent[ 0 ] )
+
 def convertMetadata( subject ) :
   ##* Architecure need to be passed to script.
   ##* Python version need to be passed to script.
@@ -89,10 +95,7 @@ def main() :
     ##  Create PYPM package, it's a .tar.gz archive:
     with tarfile.TarFile.gzopen( oArgs.target, 'w' ) as oTarget :
       ##  Read source package data
-      lContent = os.listdir( os.path.join( sDirPkg, 'dist' ) )
-      assert len( lContent ) == 1, "'bdist' dir must contain one item"
-      sArchiveSrc = os.path.join( sDirPkg, 'dist', lContent[ 0 ] )
-      with zipfile.ZipFile( sArchiveSrc ) as oSource :
+      with zipfile.ZipFile( getOneFile( sDirPkg, 'dist' ) ) as oSource :
         ##  'bdist' command created 'bdist' dir with '.zip' archive that
         ##  contains dir like 'Python27' that contains 'Lib' and 'Scripts'
         ##  subdirs. PYPM pckage must contain 'data.tar.gz' archive that
