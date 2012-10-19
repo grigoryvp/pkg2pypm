@@ -90,12 +90,6 @@ def main() :
       'bdist' ],
       ##! For 'python' to resolve.
       shell = True, stderr = subprocess.STDOUT )
-    sDirMeta = getDirMeta( sDirPkg )
-    assert sDirMeta, "No .egg-info metadir found"
-    ##  Read package metadata.
-    with open( os.path.join( sDirMeta, 'PKG-INFO' ), 'rb' ) as oFile :
-      ##! Names will be lowercase.
-      mMetaPkg = dict( rfc822.Message( oFile ).items() )
     ##  'bdist' command created 'bdist' dir with '.zip' archive that
     ##  contains dir like 'Python27' that contains 'Lib' and 'Scripts'
     ##  subdirs. PYPM pckage must contain 'data.tar.gz' archive that
@@ -125,8 +119,14 @@ def main() :
       ##! Requires for 'tar.add' to omit path.
       os.chdir( sDirTmpPypm )
       oTarget.add( 'data.tar.gz' )
-      sMetadata = convertMetadata( mMetaPkg )
-      tarWriteStr( oTarget, 'info.json', json.dumps( sMetadata ) )
+      ##  Read source package metadata.
+      sDirMeta = getDirMeta( sDirPkg )
+      assert sDirMeta, "No .egg-info metadir found"
+      with open( os.path.join( sDirMeta, 'PKG-INFO' ), 'rb' ) as oFile :
+        ##  And write it into target package.
+        ##! Names will be lowercase.
+        sMetadata = convertMetadata( dict( rfc822.Message( oFile ).items() ) )
+        tarWriteStr( oTarget, 'info.json', json.dumps( sMetadata ) )
   finally :
     shutil.rmtree( sDirTmpPkg, ignore_errors = True )
     shutil.rmtree( sDirTmpPypm, ignore_errors = True )
