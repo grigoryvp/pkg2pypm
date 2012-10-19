@@ -14,6 +14,7 @@ import rfc822
 import json
 import zipfile
 import StringIO
+import re
 
 ABOUT_APP = "PYPI to PYPM converter"
 
@@ -90,35 +91,32 @@ def main() :
       'bdist' ],
       ##! For 'python' to resolve.
       shell = True, stderr = subprocess.STDOUT )
-    ##  'bdist' command created 'bdist' dir with '.zip' archive that
-    ##  contains dir like 'Python27' that contains 'Lib' and 'Scripts'
-    ##  subdirs. PYPM pckage must contain 'data.tar.gz' archive that
-    ##  contains 'Lib' and 'Scripts' as top level dirs. So, repack.
-    lContent = os.listdir( os.path.join( sDirPkg, 'dist' ) )
-    assert len( lContent ) == 1, "'bdist' dir must contain one item"
-    sArchiveSrc = os.path.join( sDirPkg, 'dist', lContent[ 0 ] )
-    with zipfile.ZipFile( sArchiveSrc ) as oArchiveSrc :
-      oArchiveSrc.extractall( sDirTmpRepack )
-      lContent = os.listdir( sDirTmpRepack )
-      assert len( lContent ) == 1, "bdist .zip must contain one root item"
-      sDirData = os.path.join( sDirTmpRepack, lContent[ 0 ] )
-      assert os.path.isdir( sDirData ), "bdist .zip must contain directory"
-      ##* Temp dir reuse is not good.
-      sFileTar = os.path.join( sDirTmpPkg, 'data.tar' )
-      with tarfile.TarFile( sFileTar, 'w' ) as oFileTar :
-        ##! Requires for 'tar.add' to omit path.
-        os.chdir( sDirData )
-        for sDir in os.listdir( sDirData ) :
-          oFileTar.add( sDir )
-      sFileGzip = os.path.join( sDirTmpPypm, 'data.tar.gz' )
-      with gzip.GzipFile( sFileGzip, 'w' ) as oFileGzip :
-        with open( sFileTar, 'rb' ) as oFileTar :
-          oFileGzip.write( oFileTar.read() )
     ##  Create PYPM package, it's a .tar.gz archive:
     with tarfile.TarFile.gzopen( oArgs.target, 'w' ) as oTarget :
-      ##! Requires for 'tar.add' to omit path.
-      os.chdir( sDirTmpPypm )
-      oTarget.add( 'data.tar.gz' )
+      ##  Read source package data
+      lContent = os.listdir( os.path.join( sDirPkg, 'dist' ) )
+      assert len( lContent ) == 1, "'bdist' dir must contain one item"
+      sArchiveSrc = os.path.join( sDirPkg, 'dist', lContent[ 0 ] )
+      with zipfile.ZipFile( sArchiveSrc ) as oSource :
+        ##  'bdist' command created 'bdist' dir with '.zip' archive that
+        ##  contains dir like 'Python27' that contains 'Lib' and 'Scripts'
+        ##  subdirs. PYPM pckage must contain 'data.tar.gz' archive that
+        ##  contains 'Lib' and 'Scripts' as top level dirs. So, repack.
+        mArgs = { 'fileobj' : StringIO.StringIO(), 'mode' : 'w' }
+        with tarfile.TarFile.gzopen( '', ** mArgs ) as oData :
+          for oFile in oSource.filelist :
+            oFileData = StringIO.StringIO( oSource.read( oFile.filename ) )
+            ##! Skip first dir in source archive, it's like 'Python27'.
+            sName = re.sub( r'^[^/\\]+(/|\\)', '', oFile.filename )
+            oFileInfo = tarfile.TarInfo( name = sName )
+            oFileInfo.size = oFileData.len
+            oData.addfile( oFileInfo, oFileData )
+          oData.fileobj.flush()
+          oFileInfo = tarfile.TarInfo( name = 'data.tar.gz' )
+          ##! first |.fileobj| reference |GzipFile|.
+          oFileInfo.size = oData.fileobj.fileobj.len
+          oTarget.addfile( oFileInfo, tap( oData.fileobj.fileobj.seek, 0 ) )
+      # oTarget.add( 'data.tar.gz' )
       ##  Read source package metadata.
       sDirMeta = getDirMeta( sDirPkg )
       assert sDirMeta, "No .egg-info metadir found"
