@@ -13,10 +13,16 @@ import subprocess
 import rfc822
 import json
 import zipfile
+import StringIO
 
 ABOUT_APP = "PYPI to PYPM converter"
 
 def tap( f, * v, ** k ) : return [ f.__call__( * v, ** k ), f.__self__ ][ 1 ]
+
+def tarWriteStr( archive, name, data ) :
+  oInfo = tarfile.TarInfo( name = name )
+  oInfo.size = len( data )
+  archive.addfile( oInfo, StringIO.StringIO( data ) )
 
 def getDirMeta( dirpackage ) :
   for sDir in os.listdir( dirpackage ) :
@@ -90,9 +96,6 @@ def main() :
     with open( os.path.join( sDirMeta, 'PKG-INFO' ), 'rb' ) as oFile :
       ##! Names will be lowercase.
       mMetaPkg = dict( rfc822.Message( oFile ).items() )
-    ##  Create metadata for PYPM.
-    with open( os.path.join( sDirTmpPypm, 'info.json' ), 'wb' ) as oFile :
-      json.dump( convertMetadata( mMetaPkg ), oFile )
     ##  'bdist' command created 'bdist' dir with '.zip' archive that
     ##  contains dir like 'Python27' that contains 'Lib' and 'Scripts'
     ##  subdirs. PYPM pckage must contain 'data.tar.gz' archive that
@@ -122,7 +125,8 @@ def main() :
       ##! Requires for 'tar.add' to omit path.
       os.chdir( sDirTmpPypm )
       oTarget.add( 'data.tar.gz' )
-      oTarget.add( 'info.json' )
+      sMetadata = convertMetadata( mMetaPkg )
+      tarWriteStr( oTarget, 'info.json', json.dumps( sMetadata ) )
   finally :
     shutil.rmtree( sDirTmpPkg, ignore_errors = True )
     shutil.rmtree( sDirTmpPypm, ignore_errors = True )
