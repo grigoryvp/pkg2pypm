@@ -16,6 +16,8 @@ import zipfile
 
 ABOUT_APP = "PYPI to PYPM converter"
 
+def tap( f, * v, ** k ) : return [ f.__call__( * v, ** k ), f.__self__ ][ 1 ]
+
 def getDirMeta( dirpackage ) :
   for sDir in os.listdir( dirpackage ) :
     sDir = os.path.join( dirpackage, sDir )
