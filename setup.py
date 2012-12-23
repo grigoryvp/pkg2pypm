@@ -5,7 +5,7 @@ from setuptools import setup
 
 setup(
   name         = "pkg2pypm",
-  version      = '0.1.2',
+  version      = '0.1.3',
   description  = "PYPI package to PYPM package converter.",
   author       = "Grigory Petrov",
   author_email = "grigory.v.p@gmail.com",
