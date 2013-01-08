@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 # coding:utf-8 vi:et:ts=2
 
+# pkg2pypm core.
+# Copyright 2013 Grigory Petrov
+# See LICENSE for details.
+
 import os
 import sys
 import argparse
@@ -16,33 +20,35 @@ import zipfile
 import StringIO
 import re
 
-ABOUT_APP = "PYPI to PYPM converter"
+import info
 
-def tap( f, * v, ** k ) : return [ f.__call__( * v, ** k ), f.__self__ ][ 1 ]
 
-def tarWriteStr( archive, name, data ) :
-  oInfo = tarfile.TarInfo( name = name )
-  oInfo.size = len( data )
-  archive.addfile( oInfo, StringIO.StringIO( data ) )
+def tarWriteStr( o_archive, s_name, s_data ) :
+  oInfo = tarfile.TarInfo( name = s_name )
+  oInfo.size = len( s_data )
+  o_archive.addfile( oInfo, StringIO.StringIO( s_data ) )
 
-def getDirMeta( dirpackage ) :
-  for sDir in os.listdir( dirpackage ) :
-    sDir = os.path.join( dirpackage, sDir )
+
+def getDirMeta( s_dir ) :
+  for sDir in os.listdir( s_dir ) :
+    sDir = os.path.join( s_dir, sDir )
     if os.path.isdir( sDir ) and sDir.endswith( '.egg-info' ) :
       return sDir
 
-def getOneFile( * vargs ) :
-  sPath = os.path.join( * vargs )
+
+def getOneFile( * l_args ) :
+  sPath = os.path.join( * l_args )
   lContent = os.listdir( sPath )
   assert len( lContent ) == 1, "\"{0}\" must have one item".format( sPath )
   return os.path.join( sPath, lContent[ 0 ] )
 
-def convertMetadata( subject ) :
+
+def convertMetadata( m_metadata ) :
   ##* Architecure need to be passed to script.
   ##* Python version need to be passed to script.
   mDst = { 'pkg_version' : 1, 'osarch' : 'win32-x86', 'pyver' : '2.7' }
-  def convertRecord( name, sourcename = None ) :
-    mDst[ name ] = subject.get( sourcename or name )
+  def convertRecord( s_name, s_sourcename = None ) :
+    mDst[ s_name ] = m_metadata.get( s_sourcename or s_name )
   convertRecord( 'maintainer' )
   convertRecord( 'description' )
   convertRecord( 'license' )
@@ -57,12 +63,13 @@ def convertMetadata( subject ) :
   convertRecord( 'name' )
   return mDst
 
+
 def main() :
   try :
     ##  Used to extract ".tar.gz" into or copy package directory to run
     ##  it's 'setup.py' and create metadata.
     sDirTmpPkg = tempfile.mkdtemp()
-    oParser = argparse.ArgumentParser( description = ABOUT_APP )
+    oParser = argparse.ArgumentParser( description = info.DESCR )
     oParser.add_argument( 'source', help = "PYPI .tar.gz file or directory" )
     oParser.add_argument( 'target', help = "PYPM .pypm file to create" )
     oArgs = oParser.parse_args()
