@@ -44,8 +44,8 @@ def getOneFile( * l_args ) :
 
 
 def convertMetadata( m_metadata ) :
-  ##* Architecure need to be passed to script.
-  ##* Python version need to be passed to script.
+  ##? Architecure need to be passed to script.
+  ##? Python version need to be passed to script.
   mDst = { 'pkg_version' : 1, 'osarch' : 'win32-x86', 'pyver' : '2.7' }
   def convertRecord( s_name, s_sourcename = None ) :
     mDst[ s_name ] = m_metadata.get( s_sourcename or s_name )
